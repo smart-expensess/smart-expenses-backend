@@ -1,0 +1,172 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+
+// backend/prisma/schema.prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum PaymentMethod {
+  cash
+  credit_card
+  debit_card
+  mobile_payment
+  bank_transfer
+  other
+}
+
+enum NotificationType {
+  budget_exceeded
+  large_expense
+  duplicate_warning
+  spending_tip
+}
+
+model User {
+  id            String    @id @default(uuid()) @map("id")
+  name          String?   @map("name")
+  email         String    @unique @map("email")
+  password_hash String    @map("password_hash")
+  created_at    DateTime  @default(now()) @map("created_at")
+
+  profile       Profile?
+  categories    Category[]
+  budgets       Budget[]
+  receipts      Receipt[]
+  tags          Tag[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model Profile {
+  id                     String   @id @map("id")
+  name                   String?  @map("name")
+  email                  String?  @map("email")
+  preferred_currency     String   @default("USD") @map("preferred_currency")
+  timezone               String   @default("UTC") @map("timezone")
+  large_expense_threshold Decimal @default(100.00) @map("large_expense_threshold")
+  created_at             DateTime @default(now()) @map("created_at")
+  updated_at             DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [id], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model Category {
+  id               String   @id @default(uuid()) @map("id")
+  user_id          String   @map("user_id")
+  name             String   @map("name")
+  icon             String   @default("📁") @map("icon")
+  color            String   @default("#6366f1") @map("color")
+  is_tax_deductible Boolean  @default(false) @map("is_tax_deductible")
+  created_at       DateTime @default(now()) @map("created_at")
+
+  user     User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  budgets  Budget[]
+  receipts Receipt[]
+
+  @@map("categories")
+}
+
+model Budget {
+  id            String   @id @default(uuid()) @map("id")
+  user_id       String   @map("user_id")
+  category_id   String   @map("category_id")
+  monthly_limit Decimal  @map("monthly_limit")
+  month         Int      @map("month")
+  year          Int      @map("year")
+  created_at    DateTime @default(now()) @map("created_at")
+
+  user     User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [category_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, category_id, month, year])
+  @@map("budgets")
+}
+
+model Receipt {
+  id            String         @id @default(uuid()) @map("id")
+  user_id       String         @map("user_id")
+  vendor_name   String         @map("vendor_name")
+  purchase_date DateTime       @map("purchase_date")
+  total_amount  Decimal        @map("total_amount")
+  tax_amount    Decimal        @default(0) @map("tax_amount")
+  currency      String         @default("USD") @map("currency")
+  payment_method PaymentMethod @default(other) @map("payment_method")
+  category_id   String?        @map("category_id")
+  image_url     String?        @map("image_url")
+  notes         String?        @map("notes")
+  ai_confidence Decimal?       @map("ai_confidence")
+  created_at    DateTime       @default(now()) @map("created_at")
+  updated_at    DateTime       @updatedAt @map("updated_at")
+
+  user    User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  category Category?    @relation(fields: [category_id], references: [id], onDelete: SetNull)
+  items   ReceiptItem[]
+  tags    ReceiptTag[]
+
+  @@map("receipts")
+}
+
+model ReceiptItem {
+  id         String   @id @default(uuid()) @map("id")
+  receipt_id String   @map("receipt_id")
+  name       String   @map("name")
+  quantity   Decimal  @default(1) @map("quantity")
+  unit_price Decimal  @map("unit_price")
+  total      Decimal  @map("total")
+  created_at DateTime @default(now()) @map("created_at")
+
+  receipt Receipt @relation(fields: [receipt_id], references: [id], onDelete: Cascade)
+
+  @@map("receipt_items")
+}
+
+model Tag {
+  id         String       @id @default(uuid()) @map("id")
+  user_id    String       @map("user_id")
+  name       String       @map("name")
+  created_at DateTime     @default(now()) @map("created_at")
+
+  user        User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  receiptTags ReceiptTag[]
+
+  @@unique([user_id, name])
+  @@map("tags")
+}
+
+model ReceiptTag {
+  receipt_id String @map("receipt_id")
+  tag_id     String @map("tag_id")
+
+  receipt Receipt @relation(fields: [receipt_id], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tag_id], references: [id], onDelete: Cascade)
+
+  @@id([receipt_id, tag_id])
+  @@map("receipt_tags")
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @map("id")
+  user_id   String           @map("user_id")
+  type      NotificationType @map("type")
+  title     String           @map("title")
+  message   String           @map("message")
+  is_read   Boolean          @default(false) @map("is_read")
+  created_at DateTime        @default(now()) @map("created_at")
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
