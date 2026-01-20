@@ -59,6 +59,15 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api", aiRoutes);
 
+// 404 handler for undefined routes
+app.use((req, res) => {
+  res.status(404).json({
+    message: `Route ${req.method} ${req.path} not found`,
+    path: req.path,
+    method: req.method,
+  });
+});
+
 const PORT = Number(process.env.PORT) || 4000;
 app.listen(PORT, () => {
   console.log(`API running on http://localhost:${PORT}`);

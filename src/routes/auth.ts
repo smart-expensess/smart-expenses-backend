@@ -8,6 +8,19 @@ import { defaultCategories } from "../utils/defaultCategories";
 
 const router = Router();
 
+// GET /api/auth/ - provide info about available endpoints
+router.get("/", (_req: Request, res: Response) => {
+  return res.status(200).json({
+    message: "Auth API",
+    endpoints: {
+      register: "POST /api/auth/register",
+      login: "POST /api/auth/login",
+      me: "GET /api/auth/me",
+      logout: "POST /api/auth/logout",
+    },
+  });
+});
+
 // POST /api/auth/register
 router.post("/register", async (req: Request, res: Response) => {
   const { name, email, password, preferred_currency, timezone } = req.body as {
