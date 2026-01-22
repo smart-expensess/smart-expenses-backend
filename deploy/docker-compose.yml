@@ -1,0 +1,63 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: smartexpenses-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: smart_expenses
+    volumes:
+      - smartexpenses_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d smart_expenses"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - smart-expenses_net
+      - shared-web
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: smartexpenses-backend
+    env_file:
+      - ../backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4001:4000"
+    networks:
+      - smart-expenses_net
+      - proxy-net
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: smartexpenses-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8082:80"
+    networks:
+      - proxy-net
+
+volumes:
+  smartexpenses_data:
+
+networks:
+  smart-expenses_net:
+    name: smart-expenses_net
+
+  proxy-net:
+    external: true
+    name: proxy-net
+
+  shared-web:
+    external: true
+    name: shared-web
+
